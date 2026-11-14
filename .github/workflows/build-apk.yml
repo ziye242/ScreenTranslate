@@ -1,0 +1,42 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Prepare source
+        run: |
+          unzip -q ScreenTranslate_V2_manga_source.zip -d source
+          sed -i '/import com.google.mlkit.nl.languageid.LanguageIdentification/i import com.google.mlkit.common.model.DownloadConditions' source/ScreenTranslate/app/src/main/java/com/example/screentranslate/CaptureService.kt
+
+      - name: Build APK
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          gradle -p source/ScreenTranslate :app:assembleDebug --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenTranslate-APK
+          path: source/ScreenTranslate/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
